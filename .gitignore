@@ -1,5 +1,5 @@
 # Cosign
-golang-starter.key
+files2prompt.key
 cosign.key
 *.sig
 
