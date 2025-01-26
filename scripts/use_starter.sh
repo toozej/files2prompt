@@ -91,6 +91,7 @@ generate_cosign_keys() {
 
     # Export passphrase for cosign to use
     export COSIGN_PASSWORD=${COSIGN_PASSPHRASE}
+    export COSIGN_PASSPHRASE=${COSIGN_PASSPHRASE}
 
     # Generate key-pair
     cosign generate-key-pair || handle_error "Cosign key generation failed."
@@ -110,7 +111,7 @@ if [[ $# -lt 1 ]]; then
     handle_error "Usage: $0 <new_project_name> [github_username]"
 fi
 
-OLD_PROJECT_NAME="golang-starter"
+OLD_PROJECT_NAME="files2prompt"
 NEW_PROJECT_NAME="${1}"
 GITHUB_USERNAME="${2:-toozej}"
 
@@ -128,7 +129,7 @@ EOF
 echo "Updating project from ${OLD_PROJECT_NAME} to ${NEW_PROJECT_NAME}..."
 
 # Truncate existing CREDITS.md file and replace its contents with link to template repo's CREDITS.md file
-echo -e "# Credits and Acknowledgements\n\n- https://raw.githubusercontent.com/toozej/golang-starter/main/CREDITS.md" > CREDITS.md
+echo -e "# Credits and Acknowledgements\n\n- https://raw.githubusercontent.com/toozej/files2prompt/main/CREDITS.md" > CREDITS.md
 
 # Remove old public key if it exists
 rm -f "./${OLD_PROJECT_NAME}.pub" || handle_error "Failed to remove ${OLD_PROJECT_NAME}.pub"

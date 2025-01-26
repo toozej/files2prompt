@@ -1,48 +1,144 @@
-# golang-starter
-Golang starter template
+# files2prompt
 
-## features of this starter template
-- follows common Golang best practices in terms of repo/project layout, and includes explanations of what goes where in README files
-- Cobra library for CLI handling, and Viper library for reading config files already plugged in and ready to expand upon
-- Goreleaser to build Docker images and most standard package types across Linux, MacOS and Windows
-    - also includes auto-generated manpages and shell autocompletions
-- Makefile for easy building, deploying, testing, updating, etc. both Dockerized and using locally installed Golang toolchain
-- docker-compose project for easily hosting built Dockerized Golang project, with optional support for Golang web services
-- scripts to make using the starter template easy, and to update the Golang version when a new one comes out
-- built-in security scans, vulnerability warnings and auto-updates via Dependabot and GitHub Actions
-- auto-generated documentation
-- pre-commit hooks for ensuring formatting, linting, security checks, etc.
+A command-line tool that helps prepare files for AI prompts by crawling directories and outputting file contents with flexible filtering and formatting options.
 
-## changes required to use this as a starter template
-- generate a GitHub fine-grained access token from https://github.com/settings/tokens?type=beta (used in repo as "GITHUB_TOKEN" and in GitHub Actions Secrets as "GH_TOKEN") with the following read/write permissions:
-    - actions
-    - attestations
-    - code scanning alerts
-    - commit statuses
-    - contents
-    - dependabot alerts
-    - dependabot secrets
-    - deployments
-    - environments
-    - issues
-    - pages
-    - pull requests
-    - repository security advisories
-    - secret scanning alerts
-    - secrets
-    - webhooks
-    - workflows
-- run `use_starter.sh` script to rename project files, generate Cosign artifacts, gather and upload secrets to GitHub Actions, etc.
-    - run `./scripts/use_starter.sh $NEW_PROJECT_NAME_GOES_HERE`
-    - to rename with a different GitHub username `./scripts/use_starter.sh $NEW_PROJECT_NAME_GOES_HERE $GITHUB_USERNAME_GOES_HERE`
-- set up new repository in quay.io web console
-    - (DockerHub and GitHub Container Registry do this automatically on first push/publish)
-    - name must match Git repo name
-    - grant robot user with username stored in QUAY_USERNAME "write" permissions (your quay.io account should already have admin permissions)
-- set built packages visibility in GitHub packages to public
-    - navigate to https://github.com/users/$USERNAME/packages/container/$REPO/settings
-    - scroll down to "Danger Zone"
-    - change visibility to public
+## Features
+
+- Recursive directory traversal
+- File filtering by extension
+- Support for .gitignore rules
+- Hidden file/directory filtering
+- Custom ignore patterns including for directories and/or files
+- Optional line numbers in output
+- Optional Claude-specific XML output format
+- Configurable via environment variables or command-line flags
+- Output to file or stdout
+
+## Installation
+
+```bash
+make install
+```
+
+## Usage
+
+Basic usage:
+```bash
+files2prompt [flags] [paths...]
+```
+
+The tool requires at least one path argument. It will process all files in the specified paths according to the provided options.
+
+### Flags
+
+- `-e, --extension`: File extensions to include (can be specified multiple times)
+- `--include-hidden`: Include hidden files and folders
+- `--ignore-gitignore`: Ignore .gitignore files
+- `--ignore`: Patterns to ignore (can be specified multiple times)
+- `-o, --output`: Output file path (defaults to stdout)
+- `-c, --cxml`: Output in XML format for Claude
+- `-n, --line-numbers`: Output line numbers
+- `-d, --debug`: Enable debug-level logging
+
+### Examples
+
+Process all files in the current directory:
+```bash
+files2prompt .
+```
+
+Process only Python files:
+```bash
+files2prompt -e .py ./src
+```
+
+Include hidden files and generate Claude-compatible XML:
+```bash
+files2prompt --include-hidden -c ./project
+```
+
+Output to a file instead of stdout:
+```bash
+files2prompt -o output.txt ./src ./tests
+```
+
+Ignore specific patterns:
+```bash
+files2prompt --ignore "*.test.js" --ignore "*.spec.js" ./src
+```
+
+Multiple ignore patterns:
+```bash
+files2prompt --ignore "*.test.js" --ignore "node_modules/" ./src
+```
+
+Comma-separated ignore patterns:
+```bash
+files2prompt --ignore "*.test.js,node_modules/,dist/" ./src
+```
+
+Ignore specific directories:
+```bash
+files2prompt --ignore "test/,build/" .
+```
+
+## Configuration
+
+The tool can be configured using either command-line flags or environment variables through a `.env` file. Environment variables take precedence over default values but can be overridden by command-line flags.
+
+### Environment Variables
+
+- `PATHS`: Comma-separated list of paths to process
+- `EXTENSIONS`: Comma-separated list of file extensions to include
+- `INCLUDE_HIDDEN`: Set to true to include hidden files/directories
+- `IGNORE_GITIGNORE`: Set to true to ignore .gitignore rules
+- `IGNORE_PATTERNS`: Comma-separated list of patterns to ignore
+- `OUTPUT_FILE`: Path for the output file
+- `CLAUDE_XML`: Set to true to output in Claude XML format
+
+## Output Formats
+
+### Standard Format
+```
+/path/to/file1
+---
+[file contents]
+---
+
+/path/to/file2
+---
+[file contents]
+---
+```
+
+### Claude XML Format (-c/--cxml)
+```xml
+<documents>
+<document index="1">
+<source>/path/to/file1</source>
+<document_content>
+[file contents]
+</document_content>
+</document>
+</documents>
+```
+
+## Building from Source
+
+1. Clone the repository:
+```bash
+git clone https://github.com/toozej/files2prompt.git
+```
+
+2. Build the binary:
+```bash
+cd files2prompt
+make local-build
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## changes required to update golang version
 - run `./scripts/update_golang_version.sh $NEW_VERSION_GOES_HERE`

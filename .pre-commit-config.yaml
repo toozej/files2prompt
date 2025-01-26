@@ -4,7 +4,7 @@ minimum_pre_commit_version: "1.15"
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: check-yaml
         name: Check for valid YAML syntax in repo
@@ -59,6 +59,7 @@ repos:
       - id: go-sec-mod
       - id: go-staticcheck-mod
       - id: go-critic
+        args: ["-disable=appendAssign"]
       # disabled until https://github.com/orijtech/structslop/pull/63 is merged
       # - id: go-structslop-mod
       - id: go-fmt
@@ -88,7 +89,7 @@ repos:
 
   # goreleaser config check
   - repo: https://github.com/trussworks/pre-commit-hooks
-    rev: v1.1.1
+    rev: v2.0.0
     hooks:
       - id: goreleaser-check
 
