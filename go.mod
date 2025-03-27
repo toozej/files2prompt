@@ -2,7 +2,7 @@ module github.com/toozej/files2prompt
 
 go 1.23
 
-require github.com/spf13/viper v1.20.0
+require github.com/spf13/viper v1.20.1
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.8.1
