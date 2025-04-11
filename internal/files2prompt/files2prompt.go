@@ -1,3 +1,5 @@
+// Package files2prompt provides functionality for crawling directories,
+// filtering files, and preparing content suitable for AI prompt ingestion.
 package files2prompt
 
 import (
@@ -186,6 +188,9 @@ func processFile(filePath string, config config.Config, writer io.Writer, global
 	return err
 }
 
+// Run executes the files2prompt logic using the provided config.
+// It walks through each path, reads applicable files, and writes output
+// either to stdout or a file depending on config.
 func Run(config config.Config) error {
 	log.Debugf("files2prompt pkg Run config config struct contains: %v\n", config)
 

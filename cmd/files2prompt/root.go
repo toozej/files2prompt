@@ -1,3 +1,5 @@
+// Package cmd sets up the CLI commands using Cobra,
+// handling flags, subcommands, and execution logic.
 package cmd
 
 import (
@@ -40,6 +42,7 @@ func rootCmdPreRun(cmd *cobra.Command, args []string) {
 	}
 }
 
+// Execute runs the root Cobra command for the CLI.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err.Error())

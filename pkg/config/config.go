@@ -1,3 +1,5 @@
+// Package config handles the application configuration,
+// loading it from environment variables or .env files.
 package config
 
 import (
@@ -7,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Config holds all configuration options for the files2prompt tool.
 type Config struct {
 	Paths           []string `mapstructure:"paths"`
 	Extensions      []string `mapstructure:"extensions"`
@@ -18,7 +21,7 @@ type Config struct {
 	LineNumbers     bool     `mapstructure:"line_numbers"`
 }
 
-// Get environment variables
+// GetEnvVars loads configuration from environment variables or a .env file.
 func GetEnvVars() Config {
 	if _, err := os.Stat(".env"); err == nil {
 		// Initialize Viper from .env file

@@ -6,7 +6,7 @@
 ![Docker Pulls](https://img.shields.io/docker/pulls/toozej/files2prompt)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/toozej/files2prompt/total)
 
-A command-line tool that helps prepare files for AI prompts by crawling directories and outputting file contents with flexible filtering and formatting options.
+A command-line tool that helps prepare files for AI prompts by crawling directories and outputting file contents with flexible filtering and formatting options. Heavily inspired by [Simon Willison's](https://simonwillison.net/) Python project [files-to-prompt](https://github.com/simonw/files-to-prompt).
 
 ## Features
 
