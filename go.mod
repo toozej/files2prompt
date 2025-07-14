@@ -5,7 +5,7 @@ go 1.24
 require github.com/spf13/viper v1.20.1
 
 require (
-	github.com/bmatcuk/doublestar/v4 v4.8.1
+	github.com/bmatcuk/doublestar/v4 v4.9.0
 	github.com/muesli/mango-cobra v1.2.0
 	github.com/muesli/roff v0.1.0
 	github.com/sirupsen/logrus v1.9.3
