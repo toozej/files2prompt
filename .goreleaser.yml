@@ -33,6 +33,9 @@ builds:
       - arm64
     goarm:
       - "7"
+    ignore:
+      - goos: windows
+        goarch: arm
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - -trimpath
@@ -76,76 +79,45 @@ changelog:
     - title: Other work
       order: 9999
 
-dockers:
-  - image_templates:
-      - 'toozej/files2prompt:{{ .Tag }}-amd64'
-      - 'ghcr.io/toozej/files2prompt:{{ .Tag }}-amd64'
-      - 'quay.io/toozej/files2prompt:{{ .Tag }}-amd64'
+dockers_v2:
+  - images:
+      - 'toozej/files2prompt'
+      - 'ghcr.io/toozej/files2prompt'
+      - 'quay.io/toozej/files2prompt'
+    tags:
+      - "v{{ .Version }}"
+      - "{{ .Version }}"
+      - "latest"
     dockerfile: Dockerfile.goreleaser
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/toozej/files2prompt/main/README.md"
-      - "--label=io.artifacthub.package.maintainers=[{\"name\":\"toozej\"}]"
-      - "--label=io.artifacthub.package.license=GPLv3"
-      - "--label=org.opencontainers.image.description=LLM Prompt Generator From Local Files"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/amd64"
+    labels:
+      "io.artifacthub.package.readme-url": "https://raw.githubusercontent.com/toozej/files2prompt/main/README.md"
+      "io.artifacthub.package.maintainers": "[{\"name\":\"toozej\"}]"
+      "io.artifacthub.package.license": "GPLv3"
+      "org.opencontainers.image.description": "LLM Prompt Generator From Local Files"
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.name": "{{.ProjectName}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.source": "{{.GitURL}}"
+      "org.opencontainers.image.authors": "James Tooze https://github.com/toozej/"
+      "org.opencontainers.image.documentation": "https://raw.githubusercontent.com/toozej/files2prompt/main/README.md"
+      "org.opencontainers.image.licenses": "GPL-3.0-only"
+      "org.opencontainers.image.title": "{{.ProjectName}}"
+      "org.opencontainers.image.vendor": "James Tooze"
+    annotations:
+      "index,manifest:org.opencontainers.image.authors": "James Tooze https://github.com/toozej/"
+      "index,manifest:org.opencontainers.image.created": "{{.Date}}"
+      "index,manifest:org.opencontainers.image.description": " LLM Prompt Generator From Local\
+        \ Files"
+      "index,manifest:org.opencontainers.image.documentation": "https://raw.githubusercontent.com/toozej/files2prompt/main/README.md"
+      "index,manifest:org.opencontainers.image.licenses": "GPL-3.0-only"
+      "index,manifest:org.opencontainers.image.revision": "{{.FullCommit}}"
+      "index,manifest:org.opencontainers.image.source": "https://github.com/toozej/files2prompt"
+      "index,manifest:org.opencontainers.image.title": "{{.ProjectName}}"
+      "index,manifest:org.opencontainers.image.vendor": "James Tooze"
+      "index,manifest:org.opencontainers.image.version": "{{.Version}}"
     extra_files:
       - scripts/goreleaser_entrypoint.sh
-  - image_templates:
-      - 'toozej/files2prompt:{{ .Tag }}-arm64'
-      - 'ghcr.io/toozej/files2prompt:{{ .Tag }}-arm64'
-      - 'quay.io/toozej/files2prompt:{{ .Tag }}-arm64'
-    dockerfile: Dockerfile.goreleaser
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/toozej/files2prompt/main/README.md"
-      - "--label=io.artifacthub.package.maintainers=[{\"name\":\"toozej\"}]"
-      - "--label=io.artifacthub.package.license=GPLv3"
-      - "--label=org.opencontainers.image.description=LLM Prompt Generator From Local Files"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/arm64"
-    goarch: arm64
-    extra_files:
-      - scripts/goreleaser_entrypoint.sh
-
-docker_manifests:
-  # tagged
-  - name_template: 'toozej/files2prompt:{{ .Tag }}'
-    image_templates:
-      - 'toozej/files2prompt:{{ .Tag }}-amd64'
-      - 'toozej/files2prompt:{{ .Tag }}-arm64'
-  - name_template: 'ghcr.io/toozej/files2prompt:{{ .Tag }}'
-    image_templates:
-      - 'ghcr.io/toozej/files2prompt:{{ .Tag }}-amd64'
-      - 'ghcr.io/toozej/files2prompt:{{ .Tag }}-arm64'
-  - name_template: 'quay.io/toozej/files2prompt:{{ .Tag }}'
-    image_templates:
-      - 'quay.io/toozej/files2prompt:{{ .Tag }}-amd64'
-      - 'quay.io/toozej/files2prompt:{{ .Tag }}-arm64'
-  # latest
-  - name_template: 'toozej/files2prompt:latest'
-    image_templates:
-      - 'toozej/files2prompt:{{ .Tag }}-amd64'
-      - 'toozej/files2prompt:{{ .Tag }}-arm64'
-  - name_template: 'ghcr.io/toozej/files2prompt:latest'
-    image_templates:
-      - 'ghcr.io/toozej/files2prompt:{{ .Tag }}-amd64'
-      - 'ghcr.io/toozej/files2prompt:{{ .Tag }}-arm64'
-  - name_template: 'quay.io/toozej/files2prompt:latest'
-    image_templates:
-      - 'quay.io/toozej/files2prompt:{{ .Tag }}-amd64'
-      - 'quay.io/toozej/files2prompt:{{ .Tag }}-arm64'
 
 archives:
   - name_template: >-

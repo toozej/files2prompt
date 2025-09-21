@@ -14,11 +14,42 @@ import (
 	"github.com/toozej/files2prompt/pkg/config"
 )
 
+// Standard OS functions
+var (
+	osStdout io.Writer = os.Stdout
+)
+
+var extToLang = map[string]string{
+	"py":   "python",
+	"c":    "c",
+	"cpp":  "cpp",
+	"java": "java",
+	"js":   "javascript",
+	"ts":   "typescript",
+	"html": "html",
+	"css":  "css",
+	"xml":  "xml",
+	"json": "json",
+	"yaml": "yaml",
+	"yml":  "yaml",
+	"sh":   "bash",
+	"rb":   "ruby",
+	"go":   "go",
+}
+
+func getBackticks(content string) string {
+	backticks := "```"
+	for strings.Contains(content, backticks) {
+		backticks += "`"
+	}
+	return backticks
+}
+
 func readGitignore(path string) []string {
 	gitignorePath := filepath.Join(path, ".gitignore")
 	content, err := os.ReadFile(gitignorePath) // #nosec G304
 	if err != nil {
-		return []string{}
+		return nil // Return nil for non-existent files to distinguish from empty files
 	}
 
 	var rules []string
@@ -34,14 +65,54 @@ func readGitignore(path string) []string {
 func shouldIgnore(path string, gitignoreRules []string) bool {
 	base := filepath.Base(path)
 	for _, rule := range gitignoreRules {
+		// Match against base name
 		matchedBase, _ := doublestar.Match(rule, base)
 		if matchedBase {
 			return true
 		}
-		matchedSlash, _ := doublestar.Match(rule, base+"/")
-		if strings.HasSuffix(rule, "/") && matchedSlash {
+
+		// Match against full path
+		matchedPath, _ := doublestar.Match(rule, path)
+		if matchedPath {
 			return true
 		}
+
+		// Handle directory-specific patterns
+		if strings.HasSuffix(rule, "/") {
+			// Remove trailing slash for matching
+			ruleWithoutSlash := strings.TrimSuffix(rule, "/")
+			matchedSlash, _ := doublestar.Match(ruleWithoutSlash, base)
+			if matchedSlash {
+				return true
+			}
+
+			// Also match against full path for directory contents
+			matchedPathSlash, _ := doublestar.Match(ruleWithoutSlash+"/**", path)
+			if matchedPathSlash {
+				return true
+			}
+
+			// Handle directory patterns without trailing slash
+			// Check if this is a directory pattern by seeing if it matches directory paths
+		} else if strings.Contains(path, "/") {
+			// Try matching the rule as if it were a directory pattern
+			dirPattern := rule + "/"
+			matchedDir, _ := doublestar.Match(dirPattern, path+"/")
+			if matchedDir {
+				return true
+			}
+
+			// Also try matching against the directory part of the path
+			pathParts := strings.Split(path, "/")
+			if len(pathParts) > 1 {
+				dirPath := strings.Join(pathParts[:len(pathParts)-1], "/")
+				matchedDirPath, _ := doublestar.Match(rule, dirPath)
+				if matchedDirPath {
+					return true
+				}
+			}
+		}
+
 	}
 	return false
 }
@@ -166,7 +237,7 @@ func processFile(filePath string, config config.Config, writer io.Writer, global
 	if config.LineNumbers {
 		// Calculate padding for line numbers based on total lines
 		padding := len(fmt.Sprintf("%d", len(lines)))
-		format := fmt.Sprintf("%%%dd │ %%s\n", padding)
+		format := fmt.Sprintf("%% %dd │ %%s\n", padding)
 
 		for i, line := range lines {
 			processedContent.WriteString(fmt.Sprintf(format, i+1, line))
@@ -175,13 +246,21 @@ func processFile(filePath string, config config.Config, writer io.Writer, global
 		processedContent.WriteString(string(content))
 	}
 
-	if config.ClaudeXML {
-		xmlOutput := fmt.Sprintf("<document index=\"%d\">\n<source>%s</source>\n<document_content>\n%s\n</document_content>\n</document>\n",
+	switch {
+	case config.Markdown:
+		ext := strings.TrimPrefix(filepath.Ext(filePath), ".")
+		lang := extToLang[ext]
+		contentStr := processedContent.String()
+		backticks := getBackticks(contentStr)
+		markdownOutput := fmt.Sprintf("%s\n%s%s\n%s%s\n", filePath, backticks, lang, contentStr, backticks)
+		_, err = writer.Write([]byte(markdownOutput))
+	case config.ClaudeXML:
+		xmlOutput := fmt.Sprintf("<document index=\"%d\">\n<source>%s</source>\n<document_content>\n%s</document_content>\n</document>\n",
 			*globalIndex, filePath, processedContent.String())
 		*globalIndex++
 		_, err = writer.Write([]byte(xmlOutput))
-	} else {
-		output := fmt.Sprintf("%s\n---\n%s\n---\n\n", filePath, processedContent.String())
+	default:
+		output := fmt.Sprintf("%s\n---\n%s---\n\n", filePath, processedContent.String())
 		_, err = writer.Write([]byte(output))
 	}
 
@@ -194,7 +273,7 @@ func processFile(filePath string, config config.Config, writer io.Writer, global
 func Run(config config.Config) error {
 	log.Debugf("files2prompt pkg Run config config struct contains: %v\n", config)
 
-	var writer io.Writer = os.Stdout
+	var writer io.Writer = osStdout
 	var file *os.File
 
 	if config.OutputFile != "" {

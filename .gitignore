@@ -26,5 +26,4 @@ vendor/
 # Generated directories
 completions/
 manpages/
-docs/
 dist/

@@ -1,47 +1,125 @@
-// Package config handles the application configuration,
-// loading it from environment variables or .env files.
+// Package config provides secure configuration management for the files2prompt application.
+//
+// This package handles loading configuration from environment variables and .env files
+// with built-in security measures to prevent path traversal attacks. It uses the
+// github.com/caarlos0/env library for environment variable parsing and
+// github.com/joho/godotenv for .env file loading.
+//
+// The configuration loading follows a priority order:
+//  1. Environment variables (highest priority)
+//  2. .env file in current working directory
+//  3. Default values (if any)
+//
+// Security features:
+//   - Path traversal protection for .env file loading
+//   - Secure file path resolution using filepath.Abs and filepath.Rel
+//   - Validation against directory traversal attempts
+//   - Logging of configuration loading steps for auditability and debugging
+//
+// Usage:
+//
+//	conf := config.GetEnvVars()
+//	// Use conf in your application
 package config
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/caarlos0/env/v11"
+	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 // Config holds all configuration options for the files2prompt tool.
 type Config struct {
-	Paths           []string `mapstructure:"paths"`
-	Extensions      []string `mapstructure:"extensions"`
-	IncludeHidden   bool     `mapstructure:"include_hidden"`
-	IgnoreGitignore bool     `mapstructure:"ignore_gitignore"`
-	IgnorePatterns  []string `mapstructure:"ignore_patterns"`
-	OutputFile      string   `mapstructure:"output_file"`
-	ClaudeXML       bool     `mapstructure:"claude_xml"`
-	LineNumbers     bool     `mapstructure:"line_numbers"`
+	Paths           []string `env:"PATHS" envDefault:""`
+	Extensions      []string `env:"EXTENSIONS" envDefault:""`
+	IncludeHidden   bool     `env:"INCLUDE_HIDDEN" envDefault:"false"`
+	IgnoreGitignore bool     `env:"IGNORE_GITIGNORE" envDefault:"false"`
+	IgnorePatterns  []string `env:"IGNORE_PATTERNS" envDefault:""`
+	OutputFile      string   `env:"OUTPUT_FILE" envDefault:""`
+	ClaudeXML       bool     `env:"CLAUDE_XML" envDefault:"false"`
+	LineNumbers     bool     `env:"LINE_NUMBERS" envDefault:"false"`
+	Markdown        bool     `env:"MARKDOWN" envDefault:"false"`
+	Null            bool     `env:"NULL" envDefault:"false"`
 }
 
-// GetEnvVars loads configuration from environment variables or a .env file.
+// GetEnvVars loads and returns the application configuration from environment
+// variables and .env files with comprehensive security validation.
+//
+// This function performs the following operations:
+//  1. Securely determines the current working directory
+//  2. Constructs and validates the .env file path to prevent traversal attacks
+//  3. Loads .env file if it exists in the current directory
+//  4. Parses environment variables into the Config struct
+//  5. Returns the populated configuration
+//
+// Security measures implemented:
+//   - Path traversal detection and prevention using filepath.Rel
+//   - Absolute path resolution for secure path operations
+//   - Validation against ".." sequences in relative paths
+//   - Safe file existence checking before loading
+//
+// The function will terminate the program with os.Exit(1) if any critical
+// errors occur during configuration loading, such as:
+//   - Current directory access failures
+//   - Path traversal attempts detected
+//   - .env file parsing errors
+//   - Environment variable parsing failures
+//
+// Returns:
+//   - Config: A populated configuration struct with values from environment
+//     variables and/or .env file
+//
+// Example:
+//
+//	// Load configuration
+//	conf := config.GetEnvVars()
 func GetEnvVars() Config {
-	if _, err := os.Stat(".env"); err == nil {
-		// Initialize Viper from .env file
-		viper.SetConfigFile(".env") // Specify the name of your .env file
+	// Get current working directory for secure file operations
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("Error getting current working directory: %s\n", err)
+		os.Exit(1)
+	}
 
-		// Read the .env file
-		if err := viper.ReadInConfig(); err != nil {
+	// Construct secure path for .env file within current directory
+	envPath := filepath.Join(cwd, ".env")
+
+	// Ensure the path is within our expected directory (prevent traversal)
+	cleanEnvPath, err := filepath.Abs(envPath)
+	if err != nil {
+		fmt.Printf("Error resolving .env file path: %s\n", err)
+		os.Exit(1)
+	}
+	cleanCwd, err := filepath.Abs(cwd)
+	if err != nil {
+		fmt.Printf("Error resolving current directory: %s\n", err)
+		os.Exit(1)
+	}
+	relPath, err := filepath.Rel(cleanCwd, cleanEnvPath)
+	if err != nil || strings.Contains(relPath, "..") {
+		fmt.Printf("Error: .env file path traversal detected\n")
+		os.Exit(1)
+	}
+
+	// Load .env file if it exists
+	if _, err := os.Stat(envPath); err == nil {
+		if err := godotenv.Load(envPath); err != nil {
 			log.Warn("Error loading .env file: ", err)
 		}
 	}
 
-	// Enable reading environment variables
-	viper.AutomaticEnv()
-	// Setup conf struct with items from environment variables
+	// Parse environment variables into config struct
 	var conf Config
-	if err := viper.Unmarshal(&conf); err != nil {
-		log.Fatalf("Error unmarshalling Viper conf: %s\n", err)
+	if err := env.Parse(&conf); err != nil {
+		log.Fatalf("Error parsing environment variables: %s\n", err)
 	}
 
-	// print config for debugging purposes
+	// Print config for debugging purposes
 	log.Debugf("config pkg Config struct contains: %v\n", conf)
 
 	return conf

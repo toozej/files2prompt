@@ -2,14 +2,17 @@
 // handling flags, subcommands, and execution logic.
 package cmd
 
+// Package cmd sets up the CLI commands using Cobra,
+// handling flags, subcommands, and execution logic for the files2prompt tool.
+
 import (
 	"fmt"
+	"io"
 	"os"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"go.uber.org/automaxprocs/maxprocs"
 
 	"github.com/toozej/files2prompt/internal/files2prompt"
 	"github.com/toozej/files2prompt/pkg/config"
@@ -22,24 +25,56 @@ var conf config.Config
 var rootCmd = &cobra.Command{
 	Use:   "files2prompt [paths...]",
 	Short: "Crawl and output file contents with various filtering options for AI prompting",
-	Long: `files2prompt helps prepare files for AI prompts by crawling directories 
+	Long: `files2prompt helps prepare files for AI prompts by crawling directories
 and outputting file contents with optional filtering and formatting.`,
-	Args:             cobra.MinimumNArgs(1),
+	Args:             cobra.ArbitraryArgs,
 	PersistentPreRun: rootCmdPreRun,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		conf.Paths = args
+		// Read paths from stdin if available
+		stdinPaths := readPathsFromStdin(conf.Null)
+		// Combine args and stdin paths
+		conf.Paths = append(args, stdinPaths...)
+		if len(conf.Paths) == 0 {
+			return fmt.Errorf("no paths provided via arguments or stdin")
+		}
 		log.Debugf("cmd pkg RunE config config struct contains: %v\n", conf)
 		return files2prompt.Run(conf)
 	},
 }
 
 func rootCmdPreRun(cmd *cobra.Command, args []string) {
-	if err := viper.BindPFlags(cmd.Flags()); err != nil {
-		return
-	}
-	if viper.GetBool("debug") {
+	if debug, err := cmd.Flags().GetBool("debug"); err == nil && debug {
 		log.SetLevel(log.DebugLevel)
 	}
+}
+
+func readPathsFromStdin(useNull bool) []string {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return nil
+	}
+	// Check if stdin has data
+	if (stat.Mode() & os.ModeCharDevice) != 0 {
+		return nil // No input
+	}
+	content, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return nil
+	}
+	var paths []string
+	if useNull {
+		paths = strings.Split(string(content), "\x00")
+	} else {
+		paths = strings.Fields(string(content))
+	}
+	// Filter empty
+	var filtered []string
+	for _, p := range paths {
+		if p != "" {
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered
 }
 
 // Execute runs the root Cobra command for the CLI.
@@ -51,11 +86,6 @@ func Execute() {
 }
 
 func init() {
-	_, err := maxprocs.Set()
-	if err != nil {
-		log.Error("Error setting maxprocs: ", err)
-	}
-
 	// get configuration from environment variables
 	conf = config.GetEnvVars()
 
@@ -86,6 +116,12 @@ func init() {
 	}
 	if !conf.LineNumbers {
 		rootCmd.Flags().BoolVarP(&conf.LineNumbers, "line-numbers", "n", false, "Display line numbers in output")
+	}
+	if !conf.Markdown {
+		rootCmd.Flags().BoolVarP(&conf.Markdown, "markdown", "m", false, "Output in Markdown format with fenced code blocks")
+	}
+	if !conf.Null {
+		rootCmd.Flags().BoolVarP(&conf.Null, "null", "0", false, "Use NUL character as separator when reading from stdin")
 	}
 
 	// add sub-commands

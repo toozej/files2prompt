@@ -17,8 +17,10 @@ A command-line tool that helps prepare files for AI prompts by crawling director
 - Custom ignore patterns including for directories and/or files
 - Optional line numbers in output
 - Optional Claude-specific XML output format
+- Optional Markdown output format with fenced code blocks
 - Configurable via environment variables or command-line flags
 - Output to file or stdout
+- Sub-commands for version information and manual page generation
 
 ## Installation
 
@@ -30,21 +32,28 @@ make install
 
 Basic usage:
 ```bash
-files2prompt [flags] [paths...]
+files2prompt [command] [flags] [paths...]
 ```
 
-The tool requires at least one path argument. It will process all files in the specified paths according to the provided options.
+The tool requires at least one path argument for the main command. It will process all files in the specified paths according to the provided options.
 
 ### Flags
 
 - `-e, --extension`: File extensions to include (can be specified multiple times)
 - `--include-hidden`: Include hidden files and folders
 - `--ignore-gitignore`: Ignore .gitignore files
-- `--ignore`: Patterns to ignore (can be specified multiple times)
+- `--ignore`: Patterns to ignore (can be comma-separated or specified multiple times). Use '/' suffix to match directories only. Examples: '*.test.js', 'test/', 'path/to/ignore/', 'dir1/,dir2/'
 - `-o, --output`: Output file path (defaults to stdout)
 - `-c, --cxml`: Output in XML format for Claude
 - `-n, --line-numbers`: Output line numbers
+- `-m, --markdown`: Output in Markdown format with fenced code blocks
+- `-0, --null`: Use NUL character as separator when reading from stdin
 - `-d, --debug`: Enable debug-level logging
+
+### Sub-commands
+
+- `version`: Print version and build information in JSON format
+- `man`: Generate Unix manual pages (hidden command)
 
 ### Examples
 
@@ -88,6 +97,16 @@ Ignore specific directories:
 files2prompt --ignore "test/,build/" .
 ```
 
+Output in Markdown format:
+```bash
+files2prompt --markdown ./src
+```
+
+Use NUL separator when reading from stdin:
+```bash
+echo -e "path1\x00path2" | files2prompt --null
+```
+
 ## Configuration
 
 The tool can be configured using either command-line flags or environment variables through a `.env` file. Environment variables take precedence over default values but can be overridden by command-line flags.
@@ -101,12 +120,15 @@ The tool can be configured using either command-line flags or environment variab
 - `IGNORE_PATTERNS`: Comma-separated list of patterns to ignore
 - `OUTPUT_FILE`: Path for the output file
 - `CLAUDE_XML`: Set to true to output in Claude XML format
+- `LINE_NUMBERS`: Set to true to display line numbers in output
+- `MARKDOWN`: Set to true to output in Markdown format
+- `NULL`: Set to true to use NUL character as separator when reading from stdin
 
 ## Output Formats
 
 ### Standard Format
 ```
-/path/to/file1
+ /path/to/file1
 ---
 [file contents]
 ---
@@ -117,11 +139,30 @@ The tool can be configured using either command-line flags or environment variab
 ---
 ```
 
+### Markdown Format (-m/--markdown)
+```
+/path/to/file1
+```language
+[file contents]
+```
+
+/path/to/file2
+```language
+[file contents]
+```
+```
+
 ### Claude XML Format (-c/--cxml)
 ```xml
 <documents>
 <document index="1">
 <source>/path/to/file1</source>
+<document_content>
+[file contents]
+</document_content>
+</document>
+<document index="2">
+<source>/path/to/file2</source>
 <document_content>
 [file contents]
 </document_content>
@@ -142,9 +183,6 @@ cd files2prompt
 make local-build
 ```
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## changes required to update golang version
 - `make update-golang-version` 

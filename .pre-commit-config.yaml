@@ -63,7 +63,9 @@ repos:
       # disabled until https://github.com/orijtech/structslop/pull/63 is merged
       # - id: go-structslop-mod
       - id: go-fmt
+        args: ["--hook:ignore-dir=internal/files2prompt/testdata/"]
       - id: go-imports
+        args: ["--hook:ignore-dir=internal/files2prompt/testdata/"]
       - id: golangci-lint-mod
       - id: go-test-mod
 
