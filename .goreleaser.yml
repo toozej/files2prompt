@@ -80,7 +80,8 @@ changelog:
       order: 9999
 
 dockers_v2:
-  - images:
+  - id: files2prompt
+    images:
       - 'toozej/files2prompt'
       - 'ghcr.io/toozej/files2prompt'
       - 'quay.io/toozej/files2prompt'
@@ -179,6 +180,30 @@ nfpms:
       lintian_overrides:
         - statically-linked-binary
         - changelog-file-missing-in-native-package
+
+homebrew_casks:
+  - name: files2prompt
+    homepage: https://github.com/toozej/files2prompt
+    description: "LLM Prompt Generator From Local Files"
+    license: GPLv3
+    repository:
+      owner: toozej
+      name: homebrew-tap
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    manpages:
+      - "man/files2prompt.1.gz"
+    completions:
+      bash: "completions/files2prompt.bash"
+      zsh: "completions/files2prompt.zsh"
+      fish: "completions/files2prompt.fish"
+    url:
+      verified: "github.com/toozej/files2prompt/releases/download"
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/files2prompt"]
+          end
 
 sboms:
   - artifacts: archive
