@@ -42,7 +42,7 @@ else
 	OPENER=open
 endif
 
-.PHONY: all vet test build verify run install local local-vet local-test local-cover local-run local-release-test local-release local-sign local-verify local-release-verify local-install get-cosign-pub-key docker-login pre-commit-install pre-commit-run pre-commit pre-reqs update-golang-version upload-secrets-to-gh upload-secrets-envfile-to-1pass docs clean help
+.PHONY: all vet test build verify run up down distroless-build distroless-run install local local-vet local-test local-cover local-run local-kill local-iterate local-release-test local-release local-sign local-verify local-release-verify local-install get-cosign-pub-key docker-login pre-commit-install pre-commit-run pre-commit pre-reqs update-golang-version upload-secrets-to-gh upload-secrets-envfile-to-1pass docs diagrams mutation-test test-changed watch-test profile-cpu profile-mem profile-all benchmark clean help
 
 all: vet pre-commit clean test build verify run ## Run default workflow via Docker
 local: local-update-deps local-vendor local-vet pre-commit clean local-test local-cover local-build local-sign local-verify local-run ## Run default workflow using locally installed Golang toolchain
@@ -52,7 +52,7 @@ pre-reqs: pre-commit-install ## Install pre-commit hooks and necessary binaries
 vet: ## Run `go vet` in Docker
 	docker build --target vet -f $(CURDIR)/Dockerfile -t toozej/files2prompt:latest . 
 
-test: ## Run `go test` in Docker
+test: ## Run `go test` with race detection in Docker
 	docker build --progress=plain --target test -f $(CURDIR)/Dockerfile -t toozej/files2prompt:latest . 
 
 build: ## Build Docker image, including running tests
@@ -91,7 +91,7 @@ local-vendor: ## Run `go mod tidy & vendor` using locally installed golang toolc
 	go mod vendor
 
 local-test: ## Run `go test` using locally installed golang toolchain
-	go test -coverprofile c.out -v $(CURDIR)/...
+	go test -race -coverprofile c.out -v $(CURDIR)/...
 	@echo -e "\nStatements missing coverage"
 	@grep -v -e " 1$$" c.out
 
@@ -107,6 +107,12 @@ local-run: ## Run locally built binary
 	else \
 		echo "No environment variables found at $(CURDIR)/.env. Cannot run."; \
 	fi
+
+local-kill: ## Kill any currently running locally built binary
+	-pkill -f '$(CURDIR)/out/files2prompt'
+
+local-iterate: ## Run `make local-build local-run` via `air` any time a .go or .tmpl file changes
+	air -c $(CURDIR)/.air.toml
 
 local-release-test: ## Build assets and test goreleaser config using locally installed golang toolchain and goreleaser
 	goreleaser check
@@ -154,6 +160,7 @@ docker-login: ## Login to Docker registries used to publish images to
 pre-commit: pre-commit-install pre-commit-run ## Install and run pre-commit hooks
 
 pre-commit-install: ## Install pre-commit hooks and necessary binaries
+	command -v apt && apt-get update || echo "package manager not apt"
 	# golangci-lint
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	# goimports
@@ -167,7 +174,7 @@ pre-commit-install: ## Install pre-commit hooks and necessary binaries
 	# structslop
 	# go install github.com/orijtech/structslop/cmd/structslop@latest
 	# shellcheck
-	command -v shellcheck || sudo dnf install -y ShellCheck || sudo apt install -y shellcheck
+	command -v shellcheck || brew install shellcheck || apt install -y shellcheck || sudo dnf install -y ShellCheck || sudo apt install -y shellcheck
 	# checkmake
 	go install github.com/checkmake/checkmake/cmd/checkmake@latest
 	# goreleaser
@@ -206,8 +213,63 @@ docs: ## Serve Go documentation
 	@echo "Use Ctrl+C to stop the server"
 	go doc -http
 
-clean: ## Remove any locally compiled binaries
+diagrams: ## Generate architectural diagrams using go-diagrams
+	@echo "Generating architectural diagrams..."
+	go run cmd/diagrams/main.go
+	cd ./docs/diagrams/go-diagrams && for i in $(find . -name '*.dot'); do \
+		dot -Tpng $i > ${i%.dot}.png; \
+	done
+	@echo "Diagram PNGs generated in ./docs/diagrams/go-diagrams/"
+
+mutation-test: ## Run mutation testing using go-gremlins
+	@echo "Running mutation tests..."
+	gremlins unleash -E "vendor/"
+	@echo "Mutation testing completed"
+
+test-changed: ## Run tests only for packages with changes since last commit
+	@echo "Running tests for changed packages..."
+	@CHANGED_PACKAGES=$(git diff --name-only HEAD~1 | grep '\.go$' | xargs -I {} dirname {} | sort -u | xargs -I {} go list ./{}... 2>/dev/null | grep -v 'no Go files'); \
+	if [ -n "$CHANGED_PACKAGES" ]; then \
+		echo "Testing packages: $CHANGED_PACKAGES"; \
+		go test -race -v $CHANGED_PACKAGES; \
+	else \
+		echo "No changed Go packages found"; \
+	fi
+
+watch-test: ## Watch for file changes and run tests for changed packages
+	@echo "Watching for changes and running tests..."
+	@while true; do \
+		CHANGED_PACKAGES=$(git diff --name-only HEAD | grep '\.go$' | xargs -I {} dirname {} | sort -u | xargs -I {} go list ./{}... 2>/dev/null | grep -v 'no Go files'); \
+		if [ -n "$CHANGED_PACKAGES" ]; then \
+			echo "Changed packages detected: $CHANGED_PACKAGES"; \
+			go test -race -v $CHANGED_PACKAGES; \
+		fi; \
+		sleep 2; \
+	done
+
+profile-cpu: ## Generate CPU performance profile
+	@echo "Generating CPU profile..."
+	mkdir -p $(CURDIR)/profiles
+	go test -bench=. -cpuprofile=$(CURDIR)/profiles/cpu.prof $(CURDIR)/internal/files2prompt/
+	@echo "CPU profile generated at $(CURDIR)/profiles/cpu.prof"
+	go tool pprof -http $(CURDIR)/profiles/cpu.prof
+
+profile-mem: ## Generate memory performance profile
+	@echo "Generating memory profile..."
+	mkdir -p $(CURDIR)/profiles
+	go test -bench=. -memprofile=$(CURDIR)/profiles/mem.prof $(CURDIR)/internal/files2prompt/
+	@echo "Memory profile generated at $(CURDIR)/profiles/mem.prof"
+	go tool pprof -http $(CURDIR)/profiles/mem.prof
+
+profile-all: profile-cpu profile-mem ## Generate both CPU and memory profiles
+
+benchmark: ## Run benchmarks
+	@echo "Running benchmarks..."
+	go test -bench=. -benchmem $(CURDIR)/internal/files2prompt/
+
+clean: ## Remove any locally compiled binaries and profiles
 	rm -f $(CURDIR)/out/files2prompt
+	rm -rf $(CURDIR)/profiles/
 
 help: ## Display help text
 	@grep -E '^[a-zA-Z_-]+ ?:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

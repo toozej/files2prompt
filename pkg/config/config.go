@@ -14,7 +14,6 @@
 //   - Path traversal protection for .env file loading
 //   - Secure file path resolution using filepath.Abs and filepath.Rel
 //   - Validation against directory traversal attempts
-//   - Logging of configuration loading steps for auditability and debugging
 //
 // Usage:
 //
@@ -30,10 +29,33 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
-	log "github.com/sirupsen/logrus"
 )
 
-// Config holds all configuration options for the files2prompt tool.
+// Config represents the application configuration structure.
+//
+// This struct defines all configurable parameters for the files2prompt
+// application. Fields are tagged with struct tags that correspond to
+// environment variable names for automatic parsing.
+//
+// Configuration options include:
+//   - Paths: File and directory paths to process
+//   - Extensions: File extensions to include in processing
+//   - IncludeHidden: Whether to include hidden files and directories
+//   - IgnoreGitignore: Whether to ignore .gitignore file rules
+//   - IgnorePatterns: Custom patterns to ignore during processing
+//   - OutputFile: Path for output file (stdout if empty)
+//   - ClaudeXML: Enable XML output format for Claude AI
+//   - LineNumbers: Include line numbers in output
+//   - Markdown: Format output as Markdown with code blocks
+//   - Null: Use null character separators for stdin input
+//
+// Example:
+//
+//	type Config struct {
+//		Paths      []string `env:"PATHS"`
+//		Extensions []string `env:"EXTENSIONS"`
+//		// ... other fields
+//	}
 type Config struct {
 	Paths           []string `env:"PATHS" envDefault:""`
 	Extensions      []string `env:"EXTENSIONS" envDefault:""`
@@ -109,18 +131,17 @@ func GetEnvVars() Config {
 	// Load .env file if it exists
 	if _, err := os.Stat(envPath); err == nil {
 		if err := godotenv.Load(envPath); err != nil {
-			log.Warn("Error loading .env file: ", err)
+			fmt.Printf("Error loading .env file: %s\n", err)
+			os.Exit(1)
 		}
 	}
 
 	// Parse environment variables into config struct
 	var conf Config
 	if err := env.Parse(&conf); err != nil {
-		log.Fatalf("Error parsing environment variables: %s\n", err)
+		fmt.Printf("Error parsing environment variables: %s\n", err)
+		os.Exit(1)
 	}
-
-	// Print config for debugging purposes
-	log.Debugf("config pkg Config struct contains: %v\n", conf)
 
 	return conf
 }
