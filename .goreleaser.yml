@@ -191,7 +191,7 @@ homebrew_casks:
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     manpages:
-      - "man/files2prompt.1.gz"
+      - "manpages/files2prompt.1.gz"
     completions:
       bash: "completions/files2prompt.bash"
       zsh: "completions/files2prompt.zsh"
