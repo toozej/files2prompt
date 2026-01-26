@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/blushft/go-diagrams v0.0.0-20250322201119-d91ac4ca5de4
-	github.com/bmatcuk/doublestar/v4 v4.9.2
+	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/joho/godotenv v1.5.1
 	github.com/muesli/mango-cobra v1.3.0
