@@ -29,4 +29,5 @@ FROM scratch
 # Copy our static executable.
 COPY --from=build /go/files2prompt/files2prompt /go/bin/files2prompt
 # Run the binary.
+USER non-root
 ENTRYPOINT ["/go/bin/files2prompt"]
