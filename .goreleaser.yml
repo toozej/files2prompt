@@ -86,8 +86,10 @@ dockers_v2:
       - 'ghcr.io/toozej/files2prompt'
       - 'quay.io/toozej/files2prompt'
     tags:
-      - "v{{ .Version }}"
-      - "{{ .Version }}"
+      - '{{ if ne (envOrDefault "GORELEASER_DOCKER_REFRESH" "false") "true" }}v{{ .Version
+        }}{{ end }}'
+      - '{{ if ne (envOrDefault "GORELEASER_DOCKER_REFRESH" "false") "true" }}{{ .Version
+        }}{{ end }}'
       - "latest"
     dockerfile: Dockerfile.goreleaser
     labels:
@@ -235,5 +237,6 @@ milestones:
   - close: true
 
 release:
+  disable: '{{ eq (envOrDefault "GORELEASER_DOCKER_REFRESH" "false") "true" }}'
   footer: |
     **Full Changelog**: https://github.com/toozej/files2prompt/compare/{{ .PreviousTag }}...{{ .Tag }}
