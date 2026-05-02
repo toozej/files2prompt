@@ -29,6 +29,11 @@ LDFLAGS = -s -w \
 # Define the repository URL
 REPO_URL := https://github.com/toozej/files2prompt
 
+# Docker image
+IMAGE_AUTHOR = toozej
+IMAGE_NAME = files2prompt
+IMAGE_TAG = latest
+
 # Detect the OS and architecture
 OS := $(shell uname -s)
 ARCH := $(shell uname -m)
@@ -50,22 +55,23 @@ local-release-verify: local-release local-sign local-verify ## Release and verif
 pre-reqs: pre-commit-install ## Install pre-commit hooks and necessary binaries
 
 vet: ## Run `go vet` in Docker
-	docker build --target vet -f $(CURDIR)/Dockerfile -t toozej/files2prompt:latest . 
+	docker build --target vet -f $(CURDIR)/Dockerfile -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) . 
 
 test: ## Run `go test` with race detection in Docker
-	docker build --progress=plain --target test -f $(CURDIR)/Dockerfile -t toozej/files2prompt:latest . 
+	docker build --progress=plain --target test -f $(CURDIR)/Dockerfile -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) . 
 
 build: ## Build Docker image, including running tests
-	docker build -f $(CURDIR)/Dockerfile -t toozej/files2prompt:latest .
+	docker build -f $(CURDIR)/Dockerfile -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) .
 
 get-cosign-pub-key: ## Get files2prompt Cosign public key from GitHub
 	test -f $(CURDIR)/files2prompt.pub || curl --silent https://raw.githubusercontent.com/toozej/files2prompt/main/files2prompt.pub -O
 
 verify: get-cosign-pub-key ## Verify Docker image with Cosign
-	cosign verify --key $(CURDIR)/files2prompt.pub toozej/files2prompt:latest
+	cosign verify --key $(CURDIR)/files2prompt.pub $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)
 
 run: ## Run built Docker image
-	docker run --rm --name files2prompt --env-file $(CURDIR)/.env toozej/files2prompt:latest
+	-docker kill $(IMAGE_NAME)
+	docker run --rm --name $(IMAGE_NAME) --env-file $(CURDIR)/.env $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)
 
 install: ## Install files2prompt from latest GitHub release
 	if command -v go; then \
@@ -84,6 +90,7 @@ local-update-deps: ## Run `go get -t -u ./...` to update Go module dependencies
 	go get -t -u ./...
 
 local-vet: ## Run `go vet` using locally installed golang toolchain
+	go fmt $(CURDIR)/...
 	go vet $(CURDIR)/...
 
 local-vendor: ## Run `go mod tidy & vendor` using locally installed golang toolchain
@@ -269,9 +276,15 @@ benchmark: ## Run benchmarks
 	@echo "Running benchmarks..."
 	go test -bench=. -benchmem $(CURDIR)/internal/files2prompt/
 
-clean: ## Remove any locally compiled binaries and profiles
-	rm -f $(CURDIR)/out/files2prompt
-	rm -rf $(CURDIR)/profiles/
+clean: ## Remove any locally compiled binaries, profiles, demo output, and built Docker image
+	@echo "=== Cleaning up compiled binaries, profiles, demo output, and built Docker image ==="
+	@rm -f $(CURDIR)/out/files2prompt
+	@rm -rf $(CURDIR)/profiles/
+	@rm -rf $(CURDIR)/dist/
+	@rm -rf $(CURDIR)/c.out
+	@rm -rf $(CURDIR)/manpages/
+	@rm -rf $(CURDIR)/completions/
+	-docker image rm $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)
 
 help: ## Display help text
 	@grep -E '^[a-zA-Z_-]+ ?:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

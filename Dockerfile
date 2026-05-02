@@ -1,5 +1,5 @@
 # setup project and deps
-FROM golang:1.26-bookworm AS init
+FROM golang:1.26-trixie AS init
 
 WORKDIR /go/files2prompt/
 
@@ -29,5 +29,5 @@ FROM scratch
 # Copy our static executable.
 COPY --from=build /go/files2prompt/files2prompt /go/bin/files2prompt
 # Run the binary.
-USER non-root
+USER nonroot
 ENTRYPOINT ["/go/bin/files2prompt"]
