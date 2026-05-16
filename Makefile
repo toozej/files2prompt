@@ -55,13 +55,19 @@ local-release-verify: local-release local-sign local-verify ## Release and verif
 pre-reqs: pre-commit-install ## Install pre-commit hooks and necessary binaries
 
 vet: ## Run `go vet` in Docker
-	docker build --target vet -f $(CURDIR)/Dockerfile -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) . 
+	docker build --target vet -f $(CURDIR)/Dockerfile -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) .
 
 test: ## Run `go test` with race detection in Docker
-	docker build --progress=plain --target test -f $(CURDIR)/Dockerfile -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) . 
+	docker build --progress=plain --target test -f $(CURDIR)/Dockerfile -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) .
 
 build: ## Build Docker image, including running tests
-	docker build -f $(CURDIR)/Dockerfile -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) .
+	docker build -f $(CURDIR)/Dockerfile \
+		--build-arg VERSION=$(or $(VERSION),unknown) \
+		--build-arg COMMIT=$(or $(COMMIT),unknown) \
+		--build-arg BRANCH=$(or $(BRANCH),unknown) \
+		--build-arg BUILT_AT=$(NOW) \
+		--build-arg BUILDER=$(BUILDER) \
+		-t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) .
 
 get-cosign-pub-key: ## Get files2prompt Cosign public key from GitHub
 	test -f $(CURDIR)/files2prompt.pub || curl --silent https://raw.githubusercontent.com/toozej/files2prompt/main/files2prompt.pub -O
