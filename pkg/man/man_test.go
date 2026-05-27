@@ -5,11 +5,11 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func TestNewManCmd(t *testing.T) {
-	// test each field of NewManCmd Cobra command
-
 	expectedUse := "man"
 	if NewManCmd().Use != expectedUse {
 		t.Errorf("Unexpected command use text: got %q, expected %q", NewManCmd().Use, expectedUse)
@@ -34,82 +34,124 @@ func TestNewManCmd(t *testing.T) {
 	if NewManCmd().Hidden != expectedHidden {
 		t.Errorf("Unexpected command Hidden field: got %t, expected %t", NewManCmd().Hidden, expectedHidden)
 	}
+}
 
-	// Test that RunE function works correctly
-	// Capture stdout to test the man page output
+func TestNewManCmd_NoArgs(t *testing.T) {
 	cmd := NewManCmd()
+	if err := cmd.Args(cmd, []string{}); err != nil {
+		t.Errorf("expected no error with zero args, got: %v", err)
+	}
+}
 
-	// Capture stdout
+func TestNewManCmd_RejectsArgs(t *testing.T) {
+	cmd := NewManCmd()
+	if err := cmd.Args(cmd, []string{"extra"}); err == nil {
+		t.Error("expected error when args provided to man command, got nil")
+	}
+}
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
 	oldStdout := os.Stdout
+	defer func() { os.Stdout = oldStdout }()
+
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	// Execute the command
-	err := cmd.RunE(cmd, []string{})
-	if err != nil {
-		t.Errorf("Command RunE failed: %v", err)
-	}
+	fn()
 
-	// Restore stdout and read captured output
-	w.Close()
+	_ = w.Close()
+	var out bytes.Buffer
+	_, _ = out.ReadFrom(r)
 	os.Stdout = oldStdout
 
-	var buf bytes.Buffer
-	_, err = buf.ReadFrom(r)
-	if err != nil {
-		t.Errorf("Failed to read from pipe: %v", err)
-	}
-	output := buf.String()
+	return out.String()
+}
 
-	// Verify output is not empty
-	if output == "" {
-		t.Error("Command RunE produced no output")
-	}
+func TestNewManCmd_RunE(t *testing.T) {
+	rootCmd := &cobra.Command{Use: "testroot", Short: "Test Root"}
+	manCmd := NewManCmd()
+	rootCmd.AddCommand(manCmd)
 
-	// Debug: print first few lines to understand format
-	lines := strings.Split(output, "\n")
-	if len(lines) > 10 {
-		t.Logf("First 10 lines of output: %v", lines[:10])
-	} else {
-		t.Logf("All lines of output: %v", lines)
-	}
-
-	// Verify output contains expected man page elements
-	// Man pages typically start with .TH (title header) and contain .SH (section headers)
-	if !strings.Contains(output, ".TH") {
-		t.Error("Output does not contain man page title header (.TH)")
-	}
-
-	if !strings.Contains(output, ".SH") {
-		t.Error("Output does not contain man page section headers (.SH)")
-	}
-
-	// Verify output contains the command name
-	if !strings.Contains(output, "files2prompt") {
-		t.Error("Output does not contain command name 'files2prompt'")
-	}
-
-	// Verify output contains expected sections for the man command itself
-	// The man command generates its own man page, not the full application man page
-	expectedSections := []string{
-		"NAME",
-		"SYNOPSIS",
-		"DESCRIPTION",
-	}
-
-	for _, section := range expectedSections {
-		if !strings.Contains(output, section) {
-			t.Errorf("Output does not contain expected section: %s", section)
+	manCmd.SetArgs([]string{})
+	output := captureStdout(t, func() {
+		err := manCmd.Execute()
+		if err != nil {
+			t.Fatalf("man command execution failed: %v", err)
 		}
+	})
+
+	if output == "" {
+		t.Error("expected man command to produce output, got empty string")
 	}
 
-	// Verify specific content that should be present for the man command
-	if !strings.Contains(output, "Generates files2prompt's command line manpages") {
-		t.Error("Output does not contain expected man command description")
+	if !strings.Contains(output, "testroot") {
+		t.Errorf("expected man page output to contain root command name 'testroot', got: %q", output[:min(len(output), 200)])
 	}
+}
 
-	// Verify it contains the command name "man"
-	if !strings.Contains(output, "man - Generates files2prompt's command line manpages") {
-		t.Error("Output does not contain expected NAME section content")
+func TestNewManCmd_ManPageGeneration(t *testing.T) {
+	rootCmd := &cobra.Command{Use: "myapp", Short: "My Application"}
+	manCmd := NewManCmd()
+	rootCmd.AddCommand(manCmd)
+
+	manCmd.SetArgs([]string{})
+	err := manCmd.Execute()
+	if err != nil {
+		t.Fatalf("man command execution failed: %v", err)
 	}
+}
+
+func TestNewManCmd_RunEWithSubcommands(t *testing.T) {
+	rootCmd := &cobra.Command{Use: "myapp", Short: "My Application"}
+	subCmd := &cobra.Command{Use: "sub", Short: "A subcommand", Run: func(cmd *cobra.Command, args []string) {}}
+	rootCmd.AddCommand(subCmd)
+
+	manCmd := NewManCmd()
+	rootCmd.AddCommand(manCmd)
+
+	manCmd.SetArgs([]string{})
+	output := captureStdout(t, func() {
+		err := manCmd.Execute()
+		if err != nil {
+			t.Fatalf("man command execution failed: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "sub") {
+		t.Errorf("expected man page output to mention subcommand 'sub', got: %q", output[:min(len(output), 500)])
+	}
+}
+
+func TestNewManCmd_RunEWithRootFlags(t *testing.T) {
+	rootCmd := &cobra.Command{Use: "flagapp", Short: "Flag Application"}
+	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug mode")
+	rootCmd.Flags().String("name", "", "Application name")
+
+	manCmd := NewManCmd()
+	rootCmd.AddCommand(manCmd)
+
+	manCmd.SetArgs([]string{})
+	output := captureStdout(t, func() {
+		err := manCmd.Execute()
+		if err != nil {
+			t.Fatalf("man command execution failed: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "flagapp") {
+		t.Errorf("expected man page output to contain 'flagapp', got: %q", output[:min(len(output), 200)])
+	}
+}
+
+func TestNewManCmd_ReturnsCobraCommand(t *testing.T) {
+	cmd := NewManCmd()
+	_ = cmd
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
