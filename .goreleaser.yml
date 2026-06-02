@@ -165,6 +165,8 @@ dockers_v2:
       "index,manifest:org.opencontainers.image.title": "{{.ProjectName}}"
       "index,manifest:org.opencontainers.image.vendor": "James Tooze"
       "index,manifest:org.opencontainers.image.version": "{{.Version}}"
+    extra_files:
+      - scripts/goreleaser_entrypoint.sh
 
 archives:
   - name_template: >-

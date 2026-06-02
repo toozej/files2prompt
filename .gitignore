@@ -2,6 +2,7 @@
 files2prompt.key
 cosign.key
 *.sig
+*.bundle
 
 # local secret environment variables
 .env

@@ -85,8 +85,11 @@ release: ## Build and sign Docker image
 get-cosign-pub-key: ## Get files2prompt Cosign public key from GitHub
 	test -f $(CURDIR)/files2prompt.pub || curl --silent https://raw.githubusercontent.com/toozej/files2prompt/main/files2prompt.pub -O
 
-verify: get-cosign-pub-key ## Verify Docker image with Cosign
-	cosign verify --key $(CURDIR)/files2prompt.pub $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)
+verify: ## Verify Docker image with Cosign
+	cosign verify \
+		--certificate-identity-regexp '^https://github.com/toozej/files2prompt/.github/workflows/release.yaml@refs/tags/.*$$' \
+		--certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+		$(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)
 
 run: ## Run built Docker image
 	-docker kill $(IMAGE_NAME)
