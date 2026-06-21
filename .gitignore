@@ -1,6 +1,4 @@
 # Cosign
-files2prompt.key
-cosign.key
 *.sig
 *.bundle
 
