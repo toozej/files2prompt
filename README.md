@@ -1,5 +1,10 @@
 # files2prompt
 
+**This repository has moved to [monogo](https://github.com/toozej/monogo).**
+
+
+
+
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/toozej/files2prompt)
 [![Go Report Card](https://goreportcard.com/badge/github.com/toozej/files2prompt)](https://goreportcard.com/report/github.com/toozej/files2prompt)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/toozej/files2prompt/cicd.yaml)
